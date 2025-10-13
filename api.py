@@ -155,12 +155,12 @@ def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str
     :param decay: REQUIRED. Non-negative integers
     :param neutralization: REQUIRED. e.g. `CROWDING`
     :param truncation: REQUIRED. A float between 0 and 1
-    :param pasteurization: Either `"ON"` or `"OFF"`
+    :param pasteurization: Either `"ON"` or `"OFF"`. Default to `"ON"`
     :param testPeriod: In format of `PaYbM`, where `a` = number of test years, `b` = number of test months. Default to `P0Y0M` (Zero test period)
     :param unitHandling: Must be `VERIFY` at this stage
-    :param nanHandling: Either `"ON"` or `"OFF"`
-    :param maxTrade: Either `"ON"` or `"OFF"`
-    :param maxRetries: When provided, stop retry getting alpha result after this many retries. Default to 3
+    :param nanHandling: Either `"ON"` or `"OFF"`. Default to `"ON"`
+    :param maxTrade: Either `"ON"` or `"OFF"`. Default to `"OFF"`
+    :param maxRetries: When provided, stop simulating this alpha after this many retries. Default to 3
     :return: A string `alphaID` which can be used to get the simulation results.
     """
 
@@ -199,12 +199,12 @@ def multi_simulate(s: requests.Session, alphas: list[str], region: str, universe
     :param decay: REQUIRED. Non-negative integers
     :param neutralization: REQUIRED. e.g. `CROWDING`
     :param truncation: REQUIRED. A float between 0 and 1
-    :param pasteurization: Either `"ON"` or `"OFF"`
+    :param pasteurization: Either `"ON"` or `"OFF"`. Default to `"ON"`
     :param testPeriod: In format of `PaYbM`, where `a` = number of test years, `b` = number of test months. Default to `P0Y0M` (Zero test period)
     :param unitHandling: Must be `VERIFY` at this stage
-    :param nanHandling: Either `"ON"` or `"OFF"`
-    :param maxTrade: Either `"ON"` or `"OFF"`
-    :param maxRetries: When provided, stop retry getting alpha result after this many retries. Default to 3
+    :param nanHandling: Either `"ON"` or `"OFF"`. Default to `"ON"`
+    :param maxTrade: Either `"ON"` or `"OFF"`. Default to `"OFF"`
+    :param maxRetries: When provided, stop simulating this alpha after this many retries. Default to 3
     :return: A list of `alphaID` strings which can be used to get the simulation results
     """
 
@@ -238,6 +238,54 @@ def multi_simulate(s: requests.Session, alphas: list[str], region: str, universe
             return multi_simulate(s, alphas, region, universe, delay, decay, neutralization, truncation, pasteurization, testPeriod, unitHandling, nanHandling, maxTrade, maxRetries)
 
     return alphaIDs
+
+
+def super_simulate(s: requests.Session, combo: str, selection: str, delay: int, decay: int, neutralization: str, truncation: float, selectionLimit: int, region: str, universe: str, maxTrade="OFF", nanHandling="ON", pasteurization="ON", selectionHandling="POSITIVE", testPeriod="P0Y0M0D", unitHandling="VERIFY", componentActivation="IS", maxRetries=3) -> str | None:
+    """
+    Simulate a super alpha, check its completion status every 10 ~ 30 seconds.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :param combo: REQUIRED. Your combo expression, e.g. `stats = generate_stats(alpha); rank(stats.pnl);`
+    :param selection: REQUIRED. YOUR selection expression, e.g. `self_correlation < 0.5`
+    :param delay: REQUIRED. Either 0 or 1
+    :param decay: REQUIRED. Non-negative integers
+    :param neutralization: REQUIRED. e.g. `CROWDING`
+    :param truncation: REQUIRED. A float between 0 and 1
+    :param selectionLimit: REQUIRED. A positive integer between 10 and 1,000 inclusive
+    :param region: REQUIRED. e.g. `ASI`
+    :param universe: REQUIRED. e.g. `TOP3000`
+    :param maxTrade: Either `"ON"` or `"OFF"`. Default to `"OFF"`
+    :param nanHandling: Either `"ON"` or `"OFF"`. Default to `"ON"`
+    :param pasteurization: Either `"ON"` or `"OFF"`. Default to `"ON"`
+    :param selectionHandling: Either `"POSITIVE"`, `"NON-ZERO"` or `"NON-NAN"`. Default to `"POSITIVE"`
+    :param testPeriod: In format of `PaYbMcD`, where `a` = number of test years, `b` = number of test months, `c` = number of test days. Default to `P0Y0M0D` (Zero test period)
+    :param unitHandling: Either `"ON"` or `"OFF"`. Default to `"ON"`
+    :param componentActivation: Either `"IS"` or `"OS"`. Default to `"IS"`
+    :param maxRetries: When provided, stop simulating this alpha after this many retries. Default to 3
+    :return: A string `alphaID` which can be used to get the simulation results.
+    """
+
+    if maxRetries <= 0:
+        warnings.warn(f"{maxRetries} attempts exceeded. Stop simulating this alpha.")
+        return None
+
+    sim_data = {"type": "SUPER", "combo": combo, "selection": selection, "settings": {"componentActivation": componentActivation, "decay": decay, "delay": delay, "instrumentType": "EQUITY", "language": "FASTEXPR", "maxTrade": maxTrade, "nanHandling": nanHandling, "neutralization": neutralization, "pasteurization": pasteurization, "region": region, "selectionHandling": selectionHandling, "selectionLimit": selectionLimit, "testPeriod": testPeriod, "truncation": truncation, "unitHandling": unitHandling, "universe": universe, "visualization": False}}
+
+    sim_resp = s.post(simulation_url, json=sim_data)
+    progress_url = sim_resp.headers["Location"]
+
+    while True:
+        sim_progress = s.get(progress_url)
+        try:
+            alphaID = sim_progress.json()["alpha"]
+            break
+        except KeyError:
+            time.sleep(10 + 20 * random.random())
+        except requests.exceptions.ConnectionError:  # Alpha simulation is stopped already
+            maxRetries -= 1
+            print(f"Alpha simulation failed. {maxRetries} attempts remaining.")
+            return super_simulate(s, combo, selection, delay, decay, neutralization, truncation, selectionLimit, region, universe, maxTrade, nanHandling, pasteurization, selectionHandling, testPeriod, unitHandling, nanHandling, maxRetries)
+
+    return alphaID
 
 
 def submit(s: requests.Session, alphaID: str) -> int:
@@ -314,7 +362,7 @@ def get_power_pool_corr(s: requests.Session, alphaID: str, maxRetries=20) -> lis
     return None
 
 
-def update_alpha_prop(s: requests.Session, alphaID: str, color: str | None = None, name: str | None = None, tags: list[str] | None = None, category: str | None = None, description: str | None = None) -> int:
+def update_alpha_prop(s: requests.Session, alphaID: str, color: str | None = None, name: str | None = None, tags: list[str] | None = None, category: str | None = None, regular_description: str | None = None, selection_description: str | None = None, combo_description: str | None = None) -> int:
     """
     Update alpha properties.
     :param s: REQUIRED. Your ``requests.Session`` object
@@ -323,12 +371,18 @@ def update_alpha_prop(s: requests.Session, alphaID: str, color: str | None = Non
     :param name: Alpha name to be updated, e.g. `"Template 1 No. 114514"`
     :param tags: List of custom tags to be updated, e.g. `["Improvable", "Submittable"]`, `["Recyclable"]`, etc.
     :param category: Must be `"PRICE_REVERSION"`, `"PRICE_MOMENTUM"` or `"VOLUME"`
-    :param description: Alpha description to be updated, e.g. `"Bet the reverse of price movements"`
+    :param regular_description: For REGULAR ALPHA ONLY. Alpha description to be updated, e.g. `"Bet the reverse of price movements"`
+    :param selection_description: For SUPER ALPHA ONLY. Selection description to be updated, e.g. `"Select alphas with self_corr > 0.6."`
+    :param combo_description: For SUPER ALPHA ONLY. Combo description to be updated, e.g. `"Put more weights on alphas with higher PnL."`
     :return: Status code of the update request. 200 indicates success, others all indicate failure.
     """
 
     if tags is None: tags = []
     update_url = alpha_url + f"/{alphaID}/"
-    update_data = {"color": color, "name": name, "tags": tags, "category": category, "regular": {"description": description}}
+    update_data = {"color": color, "name": name, "tags": tags, "category": category, "regular": {"description": regular_description}, "combo": {"description": combo_description}, "selection": {"description": selection_description}}
     resp = s.patch(update_url, json=update_data)
     return resp.status_code
+
+
+if __name__ == "__main__":
+    print("Finally done this shit")
