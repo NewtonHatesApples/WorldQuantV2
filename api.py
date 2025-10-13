@@ -59,7 +59,7 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
         return None
 
 
-def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: str, universe: str, delay: int, instrumentType="EQUITY", limit=50, theme=False, alphaCountLowerLimit=None, alphaCountUpperLimit=None, coverageLowerLimit=None, coverageUpperLimit=None, userCountLowerLimit=None, userCountUpperLimit=None, search=None) -> dict | None:
+def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: str, universe: str, delay: int, instrumentType="EQUITY", limit=50, theme=False, alphaCountLowerLimit=None, alphaCountUpperLimit=None, coverageLowerLimit=None, coverageUpperLimit=None, userCountLowerLimit=None, userCountUpperLimit=None, search=None) -> dict[str, str] | None:
     """
     Get a dictionary of datafield names and their descriptions from WorldQuant.
     :param s: REQUIRED. Your ``requests.Session`` object
@@ -109,7 +109,7 @@ def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: s
     return result_dict
 
 
-def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict | None:
+def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[str, int | float | str] | None:
     """
     Get the IS testing result of an alpha.
     :param s: REQUIRED. Your ``requests.Session`` object
@@ -188,7 +188,7 @@ def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str
     return alphaID
 
 
-def multi_simulate(s: requests.Session, alphas: list[str], region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> list | None:
+def multi_simulate(s: requests.Session, alphas: list[str], region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> list[str] | None:
     """
     Multi-simulate an alpha, check its completion status every 10 ~ 30 seconds.
     :param s: REQUIRED. Your ``requests.Session`` object
@@ -251,3 +251,55 @@ def submit(s: requests.Session, alphaID: str) -> int:
     r = s.post(url)
     status = r.status_code
     return status
+
+
+def get_self_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    while maxRetries > 0:
+        r = s.get(alpha_url + f"/{alphaID}/correlations/self").json()
+        if len(r) == 0:
+            maxRetries -= 1
+            continue
+        else:
+            return [r["max"], r["min"]]
+    warnings.warn(f"{maxRetries} attempts exceeded. Stop getting self correlation of alphaID {alphaID}.")
+    return None
+
+
+def get_prod_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    while maxRetries > 0:
+        r = s.get(alpha_url + f"/{alphaID}/correlations/prod").json()
+        if len(r) == 0:
+            maxRetries -= 1
+            continue
+        else:
+            return [r["max"], r["min"]]
+    warnings.warn(f"{maxRetries} attempts exceeded. Stop getting product correlation of alphaID {alphaID}.")
+    return None
+
+
+def get_power_pool_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    while maxRetries > 0:
+        r = s.get(alpha_url + f"/{alphaID}/correlations/power-pool").json()
+        if len(r) == 0:
+            maxRetries -= 1
+            continue
+        else:
+            return [r["max"], r["min"]]
+    warnings.warn(f"{maxRetries} attempts exceeded. Stop getting power pool correlation of alphaID {alphaID}.")
+    return None
+
+
+# {
+#   "color": "PURPLE",
+#   "name": "abc",
+#   "tags": [
+#     "abcdde",
+#     "Submittable"
+#   ],
+#   "category": "VOLUME",
+#   "regular": {
+#     "description": null
+#   }
+# }
+def update_alpha_prop(s: requests.Session, alphaID: str) -> None:
+    ...
