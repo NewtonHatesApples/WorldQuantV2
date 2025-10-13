@@ -254,6 +254,14 @@ def submit(s: requests.Session, alphaID: str) -> int:
 
 
 def get_self_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    """
+    Get max and min self-correlation of the alpha.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :param alphaID: REQUIRED. Your alphaID to be examined, e.g. akr9MgER
+    :param maxRetries: When provided, stop retry getting self-correlation after this many retries. Default to 3
+    :return: `[max_self_corr, min_self_corr]`
+    """
+
     while maxRetries > 0:
         r = s.get(alpha_url + f"/{alphaID}/correlations/self").json()
         if len(r) == 0:
@@ -266,6 +274,14 @@ def get_self_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[floa
 
 
 def get_prod_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    """
+    Get max and min prod-correlation of the alpha.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :param alphaID: REQUIRED. Your alphaID to be examined, e.g. akr9MgER
+    :param maxRetries: When provided, stop retry getting prod-correlation after this many retries. Default to 3
+    :return: `[max_prod_corr, min_prod_corr]`
+    """
+
     while maxRetries > 0:
         r = s.get(alpha_url + f"/{alphaID}/correlations/prod").json()
         if len(r) == 0:
@@ -278,6 +294,13 @@ def get_prod_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[floa
 
 
 def get_power_pool_corr(s: requests.Session, alphaID: str, maxRetries=20) -> list[float] | None:
+    """
+    Get max and min power pool correlation of the alpha.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :param alphaID: REQUIRED. Your alphaID to be examined, e.g. akr9MgER
+    :param maxRetries: When provided, stop retry getting power pool correlation after this many retries. Default to 3
+    :return: `[max_power_pool_corr, min_power_pool_corr]`
+    """
     while maxRetries > 0:
         r = s.get(alpha_url + f"/{alphaID}/correlations/power-pool").json()
         if len(r) == 0:
@@ -289,17 +312,29 @@ def get_power_pool_corr(s: requests.Session, alphaID: str, maxRetries=20) -> lis
     return None
 
 
-# {
-#   "color": "PURPLE",
-#   "name": "abc",
-#   "tags": [
-#     "abcdde",
-#     "Submittable"
-#   ],
-#   "category": "VOLUME",
-#   "regular": {
-#     "description": null
-#   }
-# }
-def update_alpha_prop(s: requests.Session, alphaID: str) -> None:
-    ...
+def update_alpha_prop(s: requests.Session, alphaID: str, color: str | None = None, name: str | None = None, tags: list[str] | None = None, category: str | None = None, description: str | None = None) -> int:
+    """
+    Update alpha properties.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :param alphaID: REQUIRED. Your alphaID to be updated, e.g. akr9MgER
+    :param color: Must be `"RED"`, `"YELLOW"`, `"GREEN"`, `"BLUE"` or `"PURPLE"`
+    :param name: Alpha name to be updated, e.g. `"Template 1 No. 114514"`
+    :param tags: List of custom tags to be updated, e.g. `["Improvable", "Submittable"]`, `["Recyclable"]`, etc.
+    :param category: Must be `"PRICE_REVERSION"`, `"PRICE_MOMENTUM"` or `"VOLUME"`
+    :param description: Alpha description to be updated, e.g. `"Bet the reverse of price movements"`
+    :return: Status code of the update request. 200 indicates success, others all indicate failure.
+    """
+
+    if tags is None: tags = []
+    update_url = alpha_url + f"/{alphaID}/"
+    update_data = {
+        "color": color,
+        "name": name,
+        "tags": tags,
+        "category": category,
+        "regular": {
+            "description": description,
+        }
+    }
+    resp = s.patch(update_url, json=update_data)
+    return resp.status_code
