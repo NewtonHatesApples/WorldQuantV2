@@ -247,6 +247,7 @@ def submit(s: requests.Session, alphaID: str) -> int:
     :param alphaID: REQUIRED. Your alphaID to be submitted, e.g. akr9MgER
     :return: Submission status code. 201 indicates success, others all indicate failure.
     """
+
     url = alpha_url + f"/{alphaID}/submit"
     r = s.post(url)
     status = r.status_code
@@ -301,6 +302,7 @@ def get_power_pool_corr(s: requests.Session, alphaID: str, maxRetries=20) -> lis
     :param maxRetries: When provided, stop retry getting power pool correlation after this many retries. Default to 3
     :return: `[max_power_pool_corr, min_power_pool_corr]`
     """
+
     while maxRetries > 0:
         r = s.get(alpha_url + f"/{alphaID}/correlations/power-pool").json()
         if len(r) == 0:
@@ -327,14 +329,6 @@ def update_alpha_prop(s: requests.Session, alphaID: str, color: str | None = Non
 
     if tags is None: tags = []
     update_url = alpha_url + f"/{alphaID}/"
-    update_data = {
-        "color": color,
-        "name": name,
-        "tags": tags,
-        "category": category,
-        "regular": {
-            "description": description,
-        }
-    }
+    update_data = {"color": color, "name": name, "tags": tags, "category": category, "regular": {"description": description}}
     resp = s.patch(update_url, json=update_data)
     return resp.status_code
