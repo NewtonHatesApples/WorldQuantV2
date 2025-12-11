@@ -3,6 +3,8 @@ import warnings
 import time
 import random
 
+from typing_extensions import Generator
+
 base_url = "https://api.worldquantbrain.com"
 login_url = base_url + "/authentication"
 alpha_url = base_url + "/alphas"
@@ -186,7 +188,7 @@ def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str
     return alphaID
 
 
-def multi_simulate(s: requests.Session, alphas: list[str], region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> list[str] | None:
+def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> list[str] | None:
     """
     Multi-simulate an alpha, check its completion status every 10 ~ 30 seconds.
     :param s: REQUIRED. Your ``requests.Session`` object
