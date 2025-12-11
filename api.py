@@ -85,23 +85,21 @@ def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: s
         warnings.warn("Limit must be between 1 and 50")
         return None
 
-    offset = 0
-
     theme = "true" if theme else "false"
-    if alphaCountLowerLimit is None: alphaCountLowerLimit = ""
-    if alphaCountUpperLimit is None: alphaCountUpperLimit = ""
-    if coverageLowerLimit is None: coverageLowerLimit = ""
-    if coverageUpperLimit is None: coverageUpperLimit = ""
-    if userCountLowerLimit is None: userCountLowerLimit = ""
-    if userCountUpperLimit is None: userCountUpperLimit = ""
-    if search is None: search = ""
+    if alphaCountLowerLimit is None: alphaCountLowerLimit = 0
+    if alphaCountUpperLimit is None: alphaCountUpperLimit = 9_999_999
+    if coverageLowerLimit is None: coverageLowerLimit = 0
+    if coverageUpperLimit is None: coverageUpperLimit = 1
+    if userCountLowerLimit is None: userCountLowerLimit = 0
+    if userCountUpperLimit is None: userCountUpperLimit = 999_999
+    if search is None: search = "*"
 
     data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search}).json()
     count = data["count"]
     result_dict = {}
 
     for i in range(count // limit + 1):
-        data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search, "offset": offset * i}).json()
+        data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search, "offset": limit * i}).json()
         results = data["results"]
         for field in results:
             result_dict[field["id"]] = field["description"]
