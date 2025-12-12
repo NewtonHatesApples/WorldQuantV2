@@ -31,8 +31,7 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
     if resp.status_code == requests.status_codes.codes.unauthorized:
         if resp.headers["WWW-Authenticate"] == "persona":  # Need biometric auth
             biometric_loc = resp.headers["Location"]
-            input(
-                f"Complete the biometric authentication at the following url: {base_url + biometric_loc}\nAfter finished, press Enter to continue ...")
+            input(f"Complete the biometric authentication at the following url: {base_url + biometric_loc}\nAfter finished, press Enter to continue ...")
             s.post(f"{base_url + biometric_loc}")
             resp2 = s.get(login_url)
 
@@ -124,22 +123,22 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
 
     is_result = s.get(alpha_url + f"/{alphaID}").json()
     return_dict = {}
-    if len(is_result) == 0:
+    if len(is_result) <= 1:
         maxRetries -= 1
         print(f"Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
         return get_alpha_result(s, alphaID, maxRetries)
 
     else:
         is_pnl = is_result["is"]
-        return_dict["pnl"] = int(is_pnl["pnl"])
-        return_dict["longCount"] = int(is_pnl["longCount"])
-        return_dict["shortCount"] = int(is_pnl["shortCount"])
+        return_dict["sharpe"] = float(is_pnl["sharpe"])
         return_dict["turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
+        return_dict["fitness"] = float(is_pnl["fitness"])
         return_dict["returns"] = round(float(is_pnl["returns"]) * 100, 2)
         return_dict["drawdown"] = round(float(is_pnl["drawdown"]) * 100, 2)
+        return_dict["pnl"] = int(is_pnl["pnl"])
         return_dict["margin"] = round(float(is_pnl["margin"]) * 10000, 2)
-        return_dict["sharpe"] = float(is_result["sharpe"])
-        return_dict["fitness"] = float(is_result["fitness"])
+        return_dict["longCount"] = int(is_pnl["longCount"])
+        return_dict["shortCount"] = int(is_pnl["shortCount"])
         return_dict["alpha"] = is_result["regular"]["code"]
         return return_dict
 
@@ -213,9 +212,23 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
         return None
 
     data = []
-    for alpha in alphas:
-        sim_data = {"type": "REGULAR", "settings": {"instrumentType": "EQUITY", "region": region, "universe": universe, "delay": delay, "decay": decay, "neutralization": neutralization, "truncation": truncation, "maxTrade": maxTrade, "pasteurization": pasteurization, "testPeriod": testPeriod, "unitHandling": unitHandling, "nanHandling": nanHandling, "language": "FASTEXPR", "visualization": False}, "regular": alpha}
-        data.append(sim_data)
+    if isinstance(alphas, list):
+        if not 1 <= len(alphas) <= 10:
+            print("Alphas list length must be between 1 and 10.")
+            return None
+        for alpha in alphas:
+            sim_data = {"type": "REGULAR", "settings": {"instrumentType": "EQUITY", "region": region, "universe": universe, "delay": delay, "decay": decay, "neutralization": neutralization, "truncation": truncation, "maxTrade": maxTrade, "pasteurization": pasteurization, "testPeriod": testPeriod, "unitHandling": unitHandling, "nanHandling": nanHandling, "language": "FASTEXPR", "visualization": False}, "regular": alpha}
+            data.append(sim_data)
+    elif isinstance(alphas, Generator):
+        alpha_gen = alphas
+        i = 0
+        while i < 10:
+            try:
+                sim_data = {"type": "REGULAR", "settings": {"instrumentType": "EQUITY", "region": region, "universe": universe, "delay": delay, "decay": decay, "neutralization": neutralization, "truncation": truncation, "maxTrade": maxTrade, "pasteurization": pasteurization, "testPeriod": testPeriod, "unitHandling": unitHandling, "nanHandling": nanHandling, "language": "FASTEXPR", "visualization": False}, "regular": next(alpha_gen)}
+                data.append(sim_data)
+                i += 1
+            except StopIteration:
+                break
 
     sim_resp = s.post(simulation_url, json=data)
     progress_url = sim_resp.headers["Location"]
