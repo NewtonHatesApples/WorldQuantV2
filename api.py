@@ -242,7 +242,13 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
                 break
 
     sim_resp = s.post(simulation_url, json=data)
-    progress_url = sim_resp.headers["Location"]
+    while True:
+        try:
+            progress_url = sim_resp.headers["Location"]
+            break
+        except KeyError:
+            print(f"[INFO {get_current_time()}] Concurrent simulation quota exceeded. If keep getting this error, there may be something wrong in your alpha expression, so modify your alpha template and try again. Retrying in 30 secs...")
+            time.sleep(30)
     alphaIDs = []
 
     while True:
