@@ -129,18 +129,23 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
         return get_alpha_result(s, alphaID, maxRetries)
 
     else:
-        is_pnl = is_result["is"]
-        return_dict["sharpe"] = float(is_pnl["sharpe"])
-        return_dict["turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
-        return_dict["fitness"] = float(is_pnl["fitness"])
-        return_dict["returns"] = round(float(is_pnl["returns"]) * 100, 2)
-        return_dict["drawdown"] = round(float(is_pnl["drawdown"]) * 100, 2)
-        return_dict["pnl"] = int(is_pnl["pnl"])
-        return_dict["margin"] = round(float(is_pnl["margin"]) * 10000, 2)
-        return_dict["longCount"] = int(is_pnl["longCount"])
-        return_dict["shortCount"] = int(is_pnl["shortCount"])
-        return_dict["alpha"] = is_result["regular"]["code"]
-        return return_dict
+        try:
+            is_pnl = is_result["is"]
+            return_dict["sharpe"] = float(is_pnl["sharpe"])
+            return_dict["turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
+            return_dict["fitness"] = float(is_pnl["fitness"])
+            return_dict["returns"] = round(float(is_pnl["returns"]) * 100, 2)
+            return_dict["drawdown"] = round(float(is_pnl["drawdown"]) * 100, 2)
+            return_dict["pnl"] = int(is_pnl["pnl"])
+            return_dict["margin"] = round(float(is_pnl["margin"]) * 10000, 2)
+            return_dict["longCount"] = int(is_pnl["longCount"])
+            return_dict["shortCount"] = int(is_pnl["shortCount"])
+            return_dict["alpha"] = is_result["regular"]["code"]
+            return return_dict
+        except TypeError:
+            maxRetries -= 1
+            print(f"Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
+            return get_alpha_result(s, alphaID, maxRetries)
 
 
 def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> str | None:
