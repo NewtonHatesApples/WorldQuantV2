@@ -4,12 +4,18 @@ import time
 import random
 
 from typing_extensions import Generator
+from datetime import datetime
 
 base_url = "https://api.worldquantbrain.com"
 login_url = base_url + "/authentication"
 alpha_url = base_url + "/alphas"
 simulation_url = base_url + "/simulations"
 data_url = base_url + "/data-fields"
+
+
+def get_current_time() -> str:
+    """Return current time as a string."""
+    return datetime.now().strftime("%H:%M:%S")
 
 
 def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
@@ -22,7 +28,7 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
     """
 
     if maxRetries <= 0:
-        warnings.warn(f"{maxRetries} attempts exceeded. Stop retry logging in.")
+        warnings.warn(f"[INFO {get_current_time()}] {maxRetries} attempts exceeded. Stop retry logging in.")
         return None
 
     s = requests.Session()
@@ -37,7 +43,7 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
 
             if resp2.status_code == 204:  # Failed biometric auth
                 maxRetries -= 1
-                print(f"Failed biometric authentication. Remaining attempts = {maxRetries}")
+                print(f"[INFO {get_current_time()}] Failed biometric authentication. Remaining attempts = {maxRetries}")
                 return login(email, password, maxRetries)
 
             elif resp2.status_code == 200:  # Authorized
@@ -45,18 +51,18 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
 
             else:  # Something went wrong, try again
                 maxRetries -= 1
-                print(f"Something went wrong. Remaining attempts = {maxRetries}")
+                print(f"[INFO {get_current_time()}] Something went wrong. Remaining attempts = {maxRetries}")
                 return login(email, password, maxRetries)
 
         else:  # Wrong username or password
-            print("Wrong username or password.")
+            print("[INFO {get_current_time()}] Wrong username or password.")
             return None
 
     elif resp.status_code == 200:  # Authorized
         return s
 
     else:  # Wrong username or password
-        print("Wrong username or password.")
+        print("[INFO {get_current_time()}] Wrong username or password.")
         return None
 
 
@@ -118,14 +124,14 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
     """
 
     if maxRetries <= 0:
-        warnings.warn(f"{maxRetries} attempts exceeded. Stop retry getting IS result of alpha {alphaID}.")
+        warnings.warn(f"[INFO {get_current_time()}] {maxRetries} attempts exceeded. Stop retry getting IS result of alpha {alphaID}.")
         return None
 
     is_result = s.get(alpha_url + f"/{alphaID}").json()
     return_dict = {}
     if len(is_result) <= 1:
         maxRetries -= 1
-        print(f"Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
+        print(f"[INFO {get_current_time()}] Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
         return get_alpha_result(s, alphaID, maxRetries)
 
     else:
@@ -144,7 +150,7 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
             return return_dict
         except TypeError:
             maxRetries -= 1
-            print(f"Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
+            print(f"[INFO {get_current_time()}] Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
             return get_alpha_result(s, alphaID, maxRetries)
 
 
@@ -186,7 +192,7 @@ def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str
             time.sleep(10 + 20 * random.random())
         except requests.exceptions.ConnectionError:  # Alpha simulation is stopped already
             maxRetries -= 1
-            print(f"Alpha simulation failed. {maxRetries} attempts remaining.")
+            print(f"[INFO {get_current_time()}] Alpha simulation failed. {maxRetries} attempts remaining.")
             return regular_simulate(s, alpha, region, universe, delay, decay, neutralization, truncation, pasteurization, testPeriod, unitHandling, nanHandling, maxTrade, maxRetries)
 
     return alphaID
@@ -213,7 +219,7 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
     """
 
     if maxRetries <= 0:
-        warnings.warn(f"{maxRetries} attempts exceeded. Stop simulating this alpha.")
+        warnings.warn(f"[INFO {get_current_time()}] {maxRetries} attempts exceeded. Stop simulating this alpha.")
         return None
 
     data = []
@@ -252,7 +258,7 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
             time.sleep(10 + 20 * random.random())
         except requests.exceptions.ConnectionError:  # Alpha simulation is stopped already
             maxRetries -= 1
-            print(f"Alpha simulation failed. {maxRetries} attempts remaining.")
+            print(f"[INFO {get_current_time()}] Alpha simulation failed. {maxRetries} attempts remaining.")
             return multi_simulate(s, alphas, region, universe, delay, decay, neutralization, truncation, pasteurization, testPeriod, unitHandling, nanHandling, maxTrade, maxRetries)
 
     return alphaIDs
@@ -283,7 +289,7 @@ def super_simulate(s: requests.Session, combo: str, selection: str, delay: int, 
     """
 
     if maxRetries <= 0:
-        warnings.warn(f"{maxRetries} attempts exceeded. Stop simulating this alpha.")
+        warnings.warn(f"[INFO {get_current_time()}] {maxRetries} attempts exceeded. Stop simulating this alpha.")
         return None
 
     sim_data = {"type": "SUPER", "combo": combo, "selection": selection, "settings": {"componentActivation": componentActivation, "decay": decay, "delay": delay, "instrumentType": "EQUITY", "language": "FASTEXPR", "maxTrade": maxTrade, "nanHandling": nanHandling, "neutralization": neutralization, "pasteurization": pasteurization, "region": region, "selectionHandling": selectionHandling, "selectionLimit": selectionLimit, "testPeriod": testPeriod, "truncation": truncation, "unitHandling": unitHandling, "universe": universe, "visualization": False}}
@@ -300,7 +306,7 @@ def super_simulate(s: requests.Session, combo: str, selection: str, delay: int, 
             time.sleep(10 + 20 * random.random())
         except requests.exceptions.ConnectionError:  # Alpha simulation is stopped already
             maxRetries -= 1
-            print(f"Alpha simulation failed. {maxRetries} attempts remaining.")
+            print(f"[INFO {get_current_time()}] Alpha simulation failed. {maxRetries} attempts remaining.")
             return super_simulate(s, combo, selection, delay, decay, neutralization, truncation, selectionLimit, region, universe, maxTrade, nanHandling, pasteurization, selectionHandling, testPeriod, unitHandling, nanHandling, maxRetries)
 
     return alphaID

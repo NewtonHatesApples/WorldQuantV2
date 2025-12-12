@@ -83,10 +83,15 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
                     alphas.append(next(alpha_gen))
                 except StopIteration:
                     break
+
         alphaIDs = multi_simulate(s, alphas=alphas, region=region, universe=universe, delay=delay, decay=decay, neutralization=neutralization, truncation=truncation, pasteurization=pasteurization, testPeriod=testPeriod, unitHandling=unitHandling, nanHandling=nanHandling, maxTrade=maxTrade, maxRetries=maxRetries)
+        if alphaIDs is None:
+            continue
 
         for alphaID in alphaIDs:
             result_dict = get_alpha_result(s, alphaID, maxRetries=3)
+            if result_dict is None:
+                continue
             result_dict["*alphaID"] = alphaID
             with result_csv_lock:
                 export_result_dict_to_csv(filename=result_csv_filename, result_dict=result_dict, delimiter="|")
