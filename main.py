@@ -89,8 +89,6 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
             continue
 
         for alphaID in alphaIDs:
-            result_dict = dict()
-            result_dict["*alphaID"] = alphaID
             result_dict = get_alpha_result(s, alphaID, maxRetries=3)
             if result_dict is None:
                 continue
@@ -104,7 +102,7 @@ def main(max_concurrent=8) -> None:
 
     auth_session = login(email=email, password=password)
     print(f"[INFO {get_current_time()}] Logged in successfully.")
-    fields_dict = get_datafields(auth_session, datasetID="fundamental3", region="USA", dataType="MATRIX", universe="TOP3000", delay=1)
+    fields_dict = get_datafields(auth_session, datasetID="fundamental3", region="USA", dataType="MATRIX", universe="TOP3000", delay=1, theme=True)
 
     generate_alphas_save_to_csv(filename=alpha_csv_filename, field_dict=fields_dict, amount=2_500)
     alpha_gen = yield_csv_lines(filename=alpha_csv_filename, delimiter="|")
@@ -112,7 +110,7 @@ def main(max_concurrent=8) -> None:
     threads = []
     print(f"[INFO {get_current_time()}] Started multi-simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "USA", "TOP3000", 1, 0, "CROWDING", 0.04))
+        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "USA", "TOP3000", 1, 0, "REVERSION_AND_MOMENTUM", 0.04))
         threads.append(t)
 
     for t in threads:

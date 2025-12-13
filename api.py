@@ -55,14 +55,14 @@ def login(email: str, password: str, maxRetries=3) -> requests.Session | None:
                 return login(email, password, maxRetries)
 
         else:  # Wrong username or password
-            print("[INFO {get_current_time()}] Wrong username or password.")
+            print(f"[INFO {get_current_time()}] Wrong username or password.")
             return None
 
     elif resp.status_code == 200:  # Authorized
         return s
 
     else:  # Wrong username or password
-        print("[INFO {get_current_time()}] Wrong username or password.")
+        print(f"[INFO {get_current_time()}] Wrong username or password.")
         return None
 
 
@@ -137,6 +137,7 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
     else:
         try:
             is_pnl = is_result["is"]
+            return_dict["*alphaID"] = alphaID
             return_dict["sharpe"] = float(is_pnl["sharpe"])
             return_dict["turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
             return_dict["fitness"] = float(is_pnl["fitness"])
@@ -249,8 +250,8 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
         except KeyError:
             print(f"[INFO {get_current_time()}] Concurrent simulation quota exceeded. If keep getting this error, there may be something wrong in your alpha expression, so modify your alpha template and try again. Retrying in 30 secs...")
             time.sleep(30)
-    alphaIDs = []
 
+    alphaIDs = []
     while True:
         sim_progress = s.get(progress_url)
         try:
