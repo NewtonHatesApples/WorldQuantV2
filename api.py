@@ -242,7 +242,14 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
             except StopIteration:
                 break
 
-    sim_resp = s.post(simulation_url, json=data)
+    while True:
+        try:
+            sim_resp = s.post(simulation_url, json=data)
+            break
+        except requests.exceptions.RequestException:
+            print(f"[INFO {get_current_time()}] Something related to connection went wrong. Retrying in 30 secs...")
+            time.sleep(30)
+
     while True:
         try:
             progress_url = sim_resp.headers["Location"]
@@ -250,10 +257,19 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
         except KeyError:
             print(f"[INFO {get_current_time()}] Concurrent simulation quota exceeded. If keep getting this error, there may be something wrong in your alpha expression, so modify your alpha template and try again. Retrying in 30 secs...")
             time.sleep(30)
+        except requests.exceptions.RequestException:
+            print(f"[INFO {get_current_time()}] Something related to connection went wrong. Retrying in 30 secs...")
+            time.sleep(30)
 
     alphaIDs = []
     while True:
-        sim_progress = s.get(progress_url)
+        while True:
+            try:
+                sim_progress = s.get(progress_url)
+                break
+            except requests.exceptions.RequestException:
+                print(f"[INFO {get_current_time()}] Something related to connection went wrong. Retrying in 30 secs...")
+                time.sleep(30)
         try:
             childSimID = sim_progress.json()["children"]
             for sim_id in childSimID:
@@ -263,7 +279,7 @@ def multi_simulate(s: requests.Session, alphas: list[str] | Generator, region: s
             break
         except KeyError:
             time.sleep(10 + 20 * random.random())
-        except requests.exceptions.ConnectionError:  # Alpha simulation is stopped already
+        except requests.exceptions.RequestException:  # Alpha simulation is stopped already
             maxRetries -= 1
             print(f"[INFO {get_current_time()}] Alpha simulation failed. {maxRetries} attempts remaining.")
             return multi_simulate(s, alphas, region, universe, delay, decay, neutralization, truncation, pasteurization, testPeriod, unitHandling, nanHandling, maxTrade, maxRetries)
