@@ -5,8 +5,8 @@ import threading
 
 from datetime import datetime
 from typing_extensions import Any, Generator
-from api import login, get_datafields, get_alpha_result, multi_simulate
-from generate_alphas import generate_alphas_save_to_csv
+from api import login, get_alpha_result, multi_simulate
+from generate_alphas_v2 import generate_alphas_save_to_csv
 
 email = os.environ.get("WQ_EMAIL")
 password = os.environ.get("WQ_PASSWORD")
@@ -104,9 +104,8 @@ def main(max_concurrent=8) -> None:
 
     auth_session = login(email=email, password=password)
     print(f"[INFO {get_current_time()}] Logged in successfully.")
-    fields_dict = get_datafields(auth_session, datasetID="pv20", region="USA", dataType="MATRIX", universe="TOP3000", delay=1, theme=False)
 
-    generate_alphas_save_to_csv(filename=alpha_csv_filename, field_dict=fields_dict, amount=300)
+    generate_alphas_save_to_csv(auth_session, filename=alpha_csv_filename, amount=2_500)
     alpha_gen = yield_csv_lines(filename=alpha_csv_filename, delimiter="|")
 
     threads = []

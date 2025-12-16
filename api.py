@@ -11,6 +11,7 @@ login_url = base_url + "/authentication"
 alpha_url = base_url + "/alphas"
 simulation_url = base_url + "/simulations"
 data_url = base_url + "/data-fields"
+operators_url = base_url + "/operators"
 
 
 def get_current_time() -> str:
@@ -114,6 +115,20 @@ def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: s
     return result_dict
 
 
+def get_operators(s: requests.Session) -> dict[str, dict[str, str]] | None:
+    """
+    Get the available operators from WorldQuant.
+    :param s: REQUIRED. Your ``requests.Session`` object
+    :return: A ``dict`` which contains all available operators and their definition, description and category.
+    """
+
+    return_dict = dict()
+    ops = s.get(operators_url).json()
+    for op in ops:
+        return_dict[op["name"]] = {"definition": op["definition"], "description": op["description"], "category": op["category"]}
+    return return_dict
+
+
 def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[str, int | float | str] | None:
     """
     Get the IS testing result of an alpha.
@@ -138,16 +153,16 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
         try:
             is_pnl = is_result["is"]
             return_dict["*alphaID"] = alphaID
-            return_dict["sharpe"] = float(is_pnl["sharpe"])
-            return_dict["turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
-            return_dict["fitness"] = float(is_pnl["fitness"])
-            return_dict["returns"] = round(float(is_pnl["returns"]) * 100, 2)
-            return_dict["drawdown"] = round(float(is_pnl["drawdown"]) * 100, 2)
-            return_dict["pnl"] = int(is_pnl["pnl"])
-            return_dict["margin"] = round(float(is_pnl["margin"]) * 10000, 2)
-            return_dict["longCount"] = int(is_pnl["longCount"])
-            return_dict["shortCount"] = int(is_pnl["shortCount"])
-            return_dict["alpha"] = is_result["regular"]["code"]
+            return_dict["Sharpe"] = float(is_pnl["sharpe"])
+            return_dict["Turnover"] = round(float(is_pnl["turnover"]) * 100, 2)
+            return_dict["Fitness"] = float(is_pnl["fitness"])
+            return_dict["Returns"] = round(float(is_pnl["returns"]) * 100, 2)
+            return_dict["Drawdown"] = round(float(is_pnl["drawdown"]) * 100, 2)
+            return_dict["PnL"] = int(is_pnl["pnl"])
+            return_dict["Margin"] = round(float(is_pnl["margin"]) * 10000, 2)
+            return_dict["LongCount"] = int(is_pnl["longCount"])
+            return_dict["ShortCount"] = int(is_pnl["shortCount"])
+            return_dict["Alpha Expression"] = is_result["regular"]["code"]
             return return_dict
         except TypeError:
             maxRetries -= 1
