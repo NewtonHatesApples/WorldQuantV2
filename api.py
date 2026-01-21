@@ -151,7 +151,9 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
 
     else:
         try:
-            is_pnl = is_result["is"]
+            is_pnl = is_result["train"]
+            if is_pnl is None:
+                is_pnl = is_result["is"]
             return_dict["*alphaID"] = alphaID
             return_dict["Sharpe"] = float(is_pnl["sharpe"])
             return_dict["Turnover"] = round(float(is_pnl["turnover"]) * 100, 2)

@@ -2,6 +2,7 @@ import os
 import csv
 import requests
 import threading
+import warnings
 
 from datetime import datetime
 from typing_extensions import Any, Generator
@@ -102,8 +103,14 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
 def main(max_concurrent=8) -> None:
     """Main workflow for automatic alpha testing."""
 
+    if email is None:
+        warnings.warn("Environmental variable `WQ_EMAIL` not set.")
+    if password is None:
+        warnings.warn("Environmental variable `WQ_PASSWORD` not set.")
+
     auth_session = login(email=email, password=password)
-    print(f"[INFO {get_current_time()}] Logged in successfully.")
+    if auth_session:
+        print(f"[INFO {get_current_time()}] Logged in successfully.")
 
     generate_alphas_save_to_csv(auth_session, filename=alpha_csv_filename, amount=2_500)
     alpha_gen = yield_csv_lines(filename=alpha_csv_filename, delimiter="|")
@@ -111,7 +118,7 @@ def main(max_concurrent=8) -> None:
     threads = []
     print(f"[INFO {get_current_time()}] Started multi-simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "USA", "TOP3000", 1, 5, "CROWDING", 0.04))
+        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "USA", "TOP3000", 1, 5, "CROWDING", 0.04, "ON", "P2Y0M"))
         threads.append(t)
 
     for t in threads:
