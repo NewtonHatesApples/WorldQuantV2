@@ -118,7 +118,7 @@ def main(max_concurrent=8) -> None:
     threads = []
     print(f"[INFO {get_current_time()}] Started multi-simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "USA", "TOP3000", 1, 5, "CROWDING", 0.04, "ON", "P2Y0M"))
+        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "JPN", "TOP1600", 1, 5, "CROWDING", 0.04, "ON", "P2Y0M"))
         threads.append(t)
 
     for t in threads:

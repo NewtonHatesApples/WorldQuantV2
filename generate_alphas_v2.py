@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox, ttk
 import random
 import re
-import csv
 from api import get_operators, get_datafields  # Assuming api.py is in the same directory
 
 # Global variables
@@ -162,10 +161,10 @@ def select_datafields(name):
         dataset_id = simpledialog.askstring("Dataset ID", "Enter Dataset ID:")
         if dataset_id is None:
             return  # Cancelled
-        region = simpledialog.askstring("Region", "Enter Region (e.g., USA):") or "USA"
-        dataType = simpledialog.askstring("Data Type", "Enter Data Type (e.g., VECTOR, MATRIX):") or "VECTOR"
-        universe = simpledialog.askstring("Universe", "Enter Universe (e.g., TOP3000):") or "TOP3000"
-        delay_str = simpledialog.askstring("Delay", "Enter Delay (0 or 1):") or "1"
+        region = simpledialog.askstring("Region", "Enter Region (e.g., USA):")
+        dataType = simpledialog.askstring("Data Type", "Enter Data Type (e.g., VECTOR, MATRIX):")
+        universe = simpledialog.askstring("Universe", "Enter Universe (e.g., TOP3000):")
+        delay_str = simpledialog.askstring("Delay", "Enter Delay (0 or 1):")
         try:
             delay = int(delay_str)
             if delay not in [0, 1]:

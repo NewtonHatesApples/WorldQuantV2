@@ -12,7 +12,18 @@ alpha_url = base_url + "/alphas"
 simulation_url = base_url + "/simulations"
 data_url = base_url + "/data-fields"
 operators_url = base_url + "/operators"
+request_delay = 0.4  # TO avoid the API rate limit
 
+original_send = requests.Session.send
+
+
+def patched_send(self, request, **kwargs):  # TO avoid the API rate limit
+    # Add the 0.4s delay before every request
+    time.sleep(request_delay)
+    return original_send(self, request, **kwargs)
+
+
+requests.Session.send = patched_send
 
 def get_current_time() -> str:
     """Return current time as a string."""
@@ -100,17 +111,28 @@ def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: s
     if coverageUpperLimit is None: coverageUpperLimit = 1
     if userCountLowerLimit is None: userCountLowerLimit = 0
     if userCountUpperLimit is None: userCountUpperLimit = 999_999
-    if search is None: search = "*"
+    if search is None:
+        data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit}).json()
+        count = data["count"]
+        result_dict = {}
+        print(data)
+        for i in range(count // limit + 1):
+            data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "offset": limit * i}).json()
+            print(data)
+            results = data["results"]
+            for field in results:
+                result_dict[field["id"]] = field["description"]
+    else:
+        data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search}).json()
+        count = data["count"]
+        result_dict = {}
+        limit = 20
 
-    data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search}).json()
-    count = data["count"]
-    result_dict = {}
-
-    for i in range(count // limit + 1):
-        data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search, "offset": limit * i}).json()
-        results = data["results"]
-        for field in results:
-            result_dict[field["id"]] = field["description"]
+        for i in range(count // limit + 1):
+            data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme,"alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "search": search, "offset": limit * i}).json()
+            results = data["results"]
+            for field in results:
+                result_dict[field["id"]] = field["description"]
 
     return result_dict
 
@@ -131,7 +153,7 @@ def get_operators(s: requests.Session) -> dict[str, dict[str, str]] | None:
 
 def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[str, int | float | str] | None:
     """
-    Get the IS testing result of an alpha.
+    Get the IS testing result of an alpha. If test period is not zero, return results of train period instead.
     :param s: REQUIRED. Your ``requests.Session`` object
     :param alphaID: REQUIRED. e.g. akr9MgER
     :param maxRetries: When provided, stop retry getting alpha result after this many retries. Default to 3
