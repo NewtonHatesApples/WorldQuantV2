@@ -12,18 +12,43 @@ alpha_url = base_url + "/alphas"
 simulation_url = base_url + "/simulations"
 data_url = base_url + "/data-fields"
 operators_url = base_url + "/operators"
-request_delay = 0.4  # TO avoid the API rate limit
 
-original_send = requests.Session.send
+original_request = requests.request
+original_session_request = requests.Session.request
+
+def patched_request(*args, **kwargs):
+    response = original_request(*args, **kwargs)
+    try:
+        data = response.json()
+        if data.get('message') == 'API rate limit exceeded':
+            time.sleep(2)
+            return patched_request(*args, **kwargs)  # Retry the request
+    except ValueError:
+        pass
+    except AttributeError:
+        pass
+
+    return response
 
 
-def patched_send(self, request, **kwargs):  # TO avoid the API rate limit
-    # Add the 0.4s delay before every request
-    time.sleep(request_delay)
-    return original_send(self, request, **kwargs)
+def patched_session_request(*args, **kwargs):
+    response = original_session_request(*args, **kwargs)
+    try:
+        data = response.json()
+        if data.get('message') == 'API rate limit exceeded':
+            time.sleep(2)
+            return patched_session_request(*args, **kwargs)  # Retry the request
+    except ValueError:
+        pass
+    except AttributeError:
+        pass
+
+    return response
 
 
-requests.Session.send = patched_send
+requests.request = patched_request
+requests.Session.request = patched_session_request
+
 
 def get_current_time() -> str:
     """Return current time as a string."""

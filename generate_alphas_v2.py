@@ -1,13 +1,14 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox, ttk
 import random
 import re
-from api import get_operators, get_datafields  # Assuming api.py is in the same directory
 
+from api import get_operators, get_datafields, get_current_time  # Assuming api.py is in the same directory
+from tkinter import simpledialog, messagebox, ttk
 # Global variables
 session = None
 operators_dict = None
 variables = {}  # To store variable definitions
+
 
 class AlphaTemplate:
     def __init__(self, template_str, variables):
@@ -30,9 +31,7 @@ class ToolTip:
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{x}+{y}")
-        label = tk.Label(tw, text=text, justify=tk.LEFT,
-                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
-                         font=("tahoma", "8", "normal"))
+        label = tk.Label(tw, text=text, justify=tk.LEFT, background="#ffffe0", relief=tk.SOLID, borderwidth=1, font=("tahoma", "8", "normal"))
         label.pack(ipadx=1)
 
     def hidetip(self):
@@ -223,7 +222,7 @@ def generate_alphas(alpha_template, amount, filename):
         for alpha in alphas:
             f.write(alpha + "\n")
 
-    print(f"Generated {amount} alphas and saved to {filename}")
+    print(f"[INFO {get_current_time()}] Generated {amount:,} alphas and saved to {filename}")
 
 def generate_alphas_save_to_csv(auth_session, filename, amount=2500):
     global session, variables, operators_dict
