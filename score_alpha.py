@@ -16,6 +16,12 @@ def get_current_time() -> str:
 
 
 def get_alpha_score(session: requests.Session | None, alpha_id: str) -> float:
+    """
+    Given an alpha a score according to the metrics defined in the function.
+    :param session: REQUIRED. Your ``requests.Session`` object
+    :param alpha_id: REQUIRED. Your alpha's ID
+    """
+
     yearly_url = f"{alpha_url}/{alpha_id}/recordsets/yearly-stats"
     this_alpha_url = f"{alpha_url}/{alpha_id}"
 
