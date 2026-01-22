@@ -92,7 +92,7 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
             continue
 
         for alphaID in alphaIDs:
-            result_dict = get_alpha_result(s, alphaID, maxRetries=3)
+            result_dict = get_alpha_result(s, alphaID, maxRetries=3, eval_alpha=True)
             if result_dict is None:
                 continue
             with result_csv_lock:
@@ -112,13 +112,26 @@ def main(max_concurrent=8) -> None:
     if auth_session:
         print(f"[INFO {get_current_time()}] Logged in successfully.")
 
+    region = input("Simulation region (Default = USA): ") or "USA"
+    universe = input(f"Universe ({region}, Default = TOP3000): ") or "TOP3000"
+    delay = input("Delay (Either 0 or 1, Default = 1): ") or 1
+    decay = input("Decay (Default = 5): ") or 5
+    neutralization = input("Neutralization (Default = CROWDING): ") or "CROWDING"
+    truncation = input("Truncation (0 ~ 1, Default = 0.04): ") or 0.04
+    pasteurization = input("Pasteurization (ON or OFF, Default = ON): ") or "ON"
+    test_period = input("Testing Period (Default = P2Y0M): ") or "P2Y0M"
+
+    delay = int(delay)
+    decay = int(decay)
+    truncation = float(truncation)
+
     generate_alphas_save_to_csv(auth_session, filename=alpha_csv_filename, amount=2_500)
     alpha_gen = yield_csv_lines(filename=alpha_csv_filename, delimiter="|")
 
     threads = []
     print(f"[INFO {get_current_time()}] Started multi-simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, "JPN", "TOP1600", 1, 5, "CROWDING", 0.04, "ON", "P2Y0M"))
+        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, region, universe, delay, decay, neutralization, truncation, pasteurization, test_period))
         threads.append(t)
 
     for t in threads:

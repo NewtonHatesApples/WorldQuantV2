@@ -5,6 +5,7 @@ import random
 
 from typing_extensions import Generator
 from datetime import datetime
+from score_alpha import get_alpha_score
 
 base_url = "https://api.worldquantbrain.com"
 login_url = base_url + "/authentication"
@@ -15,6 +16,7 @@ operators_url = base_url + "/operators"
 
 original_request = requests.request
 original_session_request = requests.Session.request
+
 
 def patched_request(*args, **kwargs):
     response = original_request(*args, **kwargs)
@@ -175,12 +177,13 @@ def get_operators(s: requests.Session) -> dict[str, dict[str, str]] | None:
     return return_dict
 
 
-def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[str, int | float | str] | None:
+def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3, eval_alpha=False) -> dict[str, int | float | str] | None:
     """
     Get the IS testing result of an alpha. If test period is not zero, return results of train period instead.
     :param s: REQUIRED. Your ``requests.Session`` object
     :param alphaID: REQUIRED. e.g. akr9MgER
     :param maxRetries: When provided, stop retry getting alpha result after this many retries. Default to 3
+    :param eval_alpha: If true, evaluate alpha and the score will be returned. Default to False
     :return: A ``dict`` which contains IS testing result
     """
 
@@ -193,7 +196,7 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
     if len(is_result) <= 1:
         maxRetries -= 1
         print(f"[INFO {get_current_time()}] Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
-        return get_alpha_result(s, alphaID, maxRetries)
+        return get_alpha_result(s, alphaID, maxRetries, eval_alpha)
 
     else:
         try:
@@ -210,12 +213,14 @@ def get_alpha_result(s: requests.Session, alphaID: str, maxRetries=3) -> dict[st
             return_dict["Margin"] = round(float(is_pnl["margin"]) * 10000, 2)
             return_dict["LongCount"] = int(is_pnl["longCount"])
             return_dict["ShortCount"] = int(is_pnl["shortCount"])
+            if eval_alpha:
+                return_dict["*AlphaScore"] = get_alpha_score(s, alphaID)
             return_dict["Alpha Expression"] = is_result["regular"]["code"]
             return return_dict
         except TypeError:
             maxRetries -= 1
             print(f"[INFO {get_current_time()}] Get alpha {alphaID} IS result failed. {maxRetries} attempts remaining.")
-            return get_alpha_result(s, alphaID, maxRetries)
+            return get_alpha_result(s, alphaID, maxRetries, eval_alpha)
 
 
 def regular_simulate(s: requests.Session, alpha: str, region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3) -> str | None:
