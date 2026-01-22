@@ -115,10 +115,9 @@ def get_datafields(s: requests.Session, datasetID: str, region: str, dataType: s
         data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit}).json()
         count = data["count"]
         result_dict = {}
-        print(data)
+
         for i in range(count // limit + 1):
             data = s.get(data_url, params={"dataset.id": datasetID, "region": region, "type": dataType, "universe": universe, "delay": delay, "instrumentType": instrumentType, "limit": limit, "theme": theme, "alpha>": alphaCountLowerLimit, "alpha<": alphaCountUpperLimit, "coverage>": coverageLowerLimit, "coverage<": coverageUpperLimit, "userCount>": userCountLowerLimit, "userCount<": userCountUpperLimit, "offset": limit * i}).json()
-            print(data)
             results = data["results"]
             for field in results:
                 result_dict[field["id"]] = field["description"]
