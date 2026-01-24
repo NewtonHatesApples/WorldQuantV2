@@ -92,7 +92,7 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
             continue
 
         for alphaID in alphaIDs:
-            result_dict = get_alpha_result(s, alphaID, maxRetries=3, eval_alpha=True)
+            result_dict = get_alpha_result(s, alphaID, maxRetries=3, eval_alpha=False)
             if result_dict is None:
                 continue
             with result_csv_lock:

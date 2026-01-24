@@ -4,6 +4,7 @@ import re
 
 from api import get_operators, get_datafields, get_current_time  # Assuming api.py is in the same directory
 from tkinter import simpledialog, messagebox, ttk
+
 # Global variables
 session = None
 operators_dict = None

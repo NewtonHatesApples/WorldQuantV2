@@ -5,9 +5,12 @@ import warnings
 import time
 
 from datetime import datetime
+from misc import patched_session_request
 
 base_url = "https://api.worldquantbrain.com"
 alpha_url = base_url + "/alphas"
+
+requests.Session.request = patched_session_request
 
 
 def get_current_time() -> str:

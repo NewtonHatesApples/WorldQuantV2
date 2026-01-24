@@ -6,6 +6,7 @@ import random
 from typing_extensions import Generator
 from datetime import datetime
 from score_alpha import get_alpha_score
+from misc import patched_session_request
 
 base_url = "https://api.worldquantbrain.com"
 login_url = base_url + "/authentication"
@@ -14,45 +15,6 @@ simulation_url = base_url + "/simulations"
 data_url = base_url + "/data-fields"
 operators_url = base_url + "/operators"
 
-requests_delay = 0.4
-original_request = requests.request
-original_session_request = requests.Session.request
-
-
-def patched_request(*args, **kwargs):
-    response = original_request(*args, **kwargs)
-    try:
-        data = response.json()
-        if data.get('message') == 'API rate limit exceeded':
-            time.sleep(requests_delay)
-            return patched_request(*args, **kwargs)  # Retry the request
-    except ValueError:
-        pass
-    except AttributeError:
-        pass
-
-    time.sleep(requests_delay)
-    return response
-
-
-def patched_session_request(*args, **kwargs):
-    """Modify `requests.Session.request` so API rate limit not easily exceeded."""
-    response = original_session_request(*args, **kwargs)
-    try:
-        data = response.json()
-        if data.get('message') == 'API rate limit exceeded':
-            time.sleep(requests_delay)
-            return patched_session_request(*args, **kwargs)  # Retry the request
-    except ValueError:
-        pass
-    except AttributeError:
-        pass
-
-    time.sleep(requests_delay)
-    return response
-
-
-requests.request = patched_request
 requests.Session.request = patched_session_request
 
 
