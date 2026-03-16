@@ -6,7 +6,7 @@ import warnings
 
 from datetime import datetime
 from typing_extensions import Any, Generator
-from api import login, get_alpha_result, multi_simulate
+from api import login, get_alpha_result, multi_simulate, regular_simulate
 from generate_alphas_v2 import generate_alphas_save_to_csv
 
 email = os.environ.get("WQ_EMAIL")
@@ -73,6 +73,32 @@ def export_result_dict_to_csv(filename: str, result_dict: dict[str, int | float 
     return None
 
 
+def continuous_single_simulate(s: requests.Session, alpha_gen: Generator, result_csv_filename: str, region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3):
+    """Continuously single-simulate alphas, saving results to a CSV file."""
+
+    while True:
+        with alpha_gen_lock:
+            try:
+                alpha = next(alpha_gen)
+            except StopIteration:
+                break
+        if not alpha:
+            break
+
+        alphaID = regular_simulate(s, alpha=alpha, region=region, universe=universe, delay=delay, decay=decay, neutralization=neutralization, truncation=truncation, pasteurization=pasteurization, testPeriod=testPeriod, unitHandling=unitHandling, nanHandling=nanHandling, maxTrade=maxTrade, maxRetries=maxRetries)
+        if alphaID is None:
+            continue
+
+        os.makedirs("alpha_results", exist_ok=True)
+        result_dict = get_alpha_result(s, alphaID, maxRetries=3, eval_alpha=False)
+        if result_dict is None:
+            continue
+        with result_csv_lock:
+            export_result_dict_to_csv(filename=f"alpha_results/{result_csv_filename}", result_dict=result_dict, delimiter="|")
+
+        print(f"[INFO {get_current_time()}] Saved results to CSV file successfully.")
+
+
 def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_csv_filename: str, region: str, universe: str, delay: int, decay: int, neutralization: str, truncation: float, pasteurization="ON", testPeriod="P0Y0M", unitHandling="VERIFY", nanHandling="ON", maxTrade="OFF", maxRetries=3, batch_size=10) -> None:
     """Continuously multi-simulate alphas, saving results to a CSV file."""
 
@@ -91,16 +117,17 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
         if alphaIDs is None:
             continue
 
+        os.makedirs("alpha_results", exist_ok=True)
         for alphaID in alphaIDs:
             result_dict = get_alpha_result(s, alphaID, maxRetries=3, eval_alpha=False)
             if result_dict is None:
                 continue
             with result_csv_lock:
-                export_result_dict_to_csv(filename=result_csv_filename, result_dict=result_dict, delimiter="|")
+                export_result_dict_to_csv(filename=f"alpha_results/{result_csv_filename}", result_dict=result_dict, delimiter="|")
         print(f"[INFO {get_current_time()}] Saved results to CSV file successfully.")
 
 
-def main(max_concurrent=8) -> None:
+def main(max_concurrent=3) -> None:
     """Main workflow for automatic alpha testing."""
 
     if email is None:
@@ -116,22 +143,24 @@ def main(max_concurrent=8) -> None:
     universe = input(f"Universe ({region}, Default = TOP3000): ") or "TOP3000"
     delay = input("Delay (Either 0 or 1, Default = 1): ") or 1
     decay = input("Decay (Default = 5): ") or 5
-    neutralization = input("Neutralization (Default = CROWDING): ") or "CROWDING"
+    neutralization = input("Neutralization (Default = INDUSTRY): ") or "INDUSTRY"
     truncation = input("Truncation (0 ~ 1, Default = 0.04): ") or 0.04
     pasteurization = input("Pasteurization (ON or OFF, Default = ON): ") or "ON"
-    test_period = input("Testing Period (Default = P2Y0M): ") or "P2Y0M"
+    test_period = input("Testing Period (Default = P0Y6M): ") or "P0Y6M"
+    alpha_amount = int(input("Alpha Amount (Default = 2_500): ")) or 2_500
 
     delay = int(delay)
     decay = int(decay)
     truncation = float(truncation)
 
-    generate_alphas_save_to_csv(auth_session, filename=alpha_csv_filename, amount=2_500)
-    alpha_gen = yield_csv_lines(filename=alpha_csv_filename, delimiter="|")
+    os.makedirs("alpha_list", exist_ok=True)
+    generate_alphas_save_to_csv(auth_session, filename=f"alpha_list/{alpha_csv_filename}", amount=alpha_amount)
+    alpha_gen = yield_csv_lines(filename=f"alpha_list/{alpha_csv_filename}", delimiter="|")
 
     threads = []
-    print(f"[INFO {get_current_time()}] Started multi-simulating with {max_concurrent} threads.")
+    print(f"[INFO {get_current_time()}] Started simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, region, universe, delay, decay, neutralization, truncation, pasteurization, test_period))
+        t = threading.Thread(target=continuous_single_simulate, args=(auth_session, alpha_gen, result_csv_filename, region, universe, delay, decay, neutralization, truncation, pasteurization, test_period))
         threads.append(t)
 
     for t in threads:
