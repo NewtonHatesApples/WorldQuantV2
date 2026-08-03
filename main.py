@@ -1,5 +1,7 @@
 import os
 import csv
+import sys
+
 import requests
 import threading
 import warnings
@@ -11,8 +13,8 @@ from generate_alphas_v2 import generate_alphas_save_to_csv
 
 email = os.environ.get("WQ_EMAIL")
 password = os.environ.get("WQ_PASSWORD")
-alpha_csv_filename = f"alphas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"
-result_csv_filename = f"results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"
+alpha_csv_filename = f"alphas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.psv"
+result_csv_filename = f"results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.psv"
 
 alpha_gen_lock = threading.Lock()
 result_csv_lock = threading.Lock()
@@ -127,18 +129,21 @@ def continuous_multi_simulate(s: requests.Session, alpha_gen: Generator, result_
         print(f"[INFO {get_current_time()}] Saved results to CSV file successfully.")
 
 
-def main(max_concurrent=3) -> None:
+def main() -> None:
     """Main workflow for automatic alpha testing."""
 
     if email is None:
         warnings.warn("Environmental variable `WQ_EMAIL` not set.")
+        sys.exit(1)
     if password is None:
         warnings.warn("Environmental variable `WQ_PASSWORD` not set.")
+        sys.exit(1)
 
     auth_session = login(email=email, password=password)
     if auth_session:
         print(f"[INFO {get_current_time()}] Logged in successfully.")
 
+    max_concurrent = int(input("Max concurrent threads (Default = 8): ")) or 8
     region = input("Simulation region (Default = USA): ") or "USA"
     universe = input(f"Universe ({region}, Default = TOP3000): ") or "TOP3000"
     delay = input("Delay (Either 0 or 1, Default = 1): ") or 1
@@ -146,7 +151,7 @@ def main(max_concurrent=3) -> None:
     neutralization = input("Neutralization (Default = INDUSTRY): ") or "INDUSTRY"
     truncation = input("Truncation (0 ~ 1, Default = 0.04): ") or 0.04
     pasteurization = input("Pasteurization (ON or OFF, Default = ON): ") or "ON"
-    test_period = input("Testing Period (Default = P0Y6M): ") or "P0Y6M"
+    test_period = input("Testing Period (Default = P1Y6M): ") or "P1Y6M"
     alpha_amount = int(input("Alpha Amount (Default = 2_500): ")) or 2_500
 
     delay = int(delay)
@@ -160,7 +165,7 @@ def main(max_concurrent=3) -> None:
     threads = []
     print(f"[INFO {get_current_time()}] Started simulating with {max_concurrent} threads.")
     for _ in range(max_concurrent):
-        t = threading.Thread(target=continuous_single_simulate, args=(auth_session, alpha_gen, result_csv_filename, region, universe, delay, decay, neutralization, truncation, pasteurization, test_period))
+        t = threading.Thread(target=continuous_multi_simulate, args=(auth_session, alpha_gen, result_csv_filename, region, universe, delay, decay, neutralization, truncation, pasteurization, test_period))
         threads.append(t)
 
     for t in threads:
